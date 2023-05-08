@@ -217,14 +217,12 @@ void add_child()
     if (pid < 0) {
         perror("Fork failed\n");
         exit(0);
-    }
-    else if (pid > 0) {
+    } else if (pid > 0) {
         CUR_CHILD++;
         child_PROC[CUR_CHILD].PID = pid;
         create_new_child_name(child_PROC[CUR_CHILD].name, CUR_CHILD);
         printf("%s process, PID %d was created.\n", child_PROC[CUR_CHILD].name, child_PROC[CUR_CHILD].PID);
-    }
-    else {
+    } else {
         call_child(last_used_child);
     }
 }
