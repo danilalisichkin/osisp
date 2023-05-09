@@ -104,6 +104,7 @@ message* create_message()
 
 int add_message(message *msg, queue *q)
 {
+
     sem_wait(free_space);
     sem_wait(mutex);
 
@@ -292,18 +293,26 @@ void quit()
         kill(getppid(), SIGKILL);
     }
 
-    if (shm_unlink("/queue")) {
+    if (shm_unlink("/shared")) {
         perror("Can't unlink shared memory!\n");
         exit(1);
     }
-    if (sem_unlink("mutex") ||
-        sem_unlink("free_space") ||
-        sem_unlink("items")) {
-        perror("Can't unlink semaphore!\n");
+    if (sem_close(mutex) ||
+        sem_close(free_space) ||
+        sem_close(items)) {
+        perror("Can't close semaphore!\n");
         exit(1);
     }
 
     exit(0);
+}
+
+
+void test()
+{
+    printf("PR-S: %d\n", prod_counter);
+    printf("CN-S: %d\n", cons_counter);
+    printf("AD: %d EX: %d\n", current_queue->counter_added, current_queue->counter_extracted);
 }
 
 void print_usage()
@@ -355,6 +364,11 @@ int main()
                 break;
             }
             case '\n': break;
+            case 't':
+            {
+                test();
+                break;
+            }
             default:
             {
                 print_usage();

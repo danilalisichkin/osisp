@@ -102,9 +102,10 @@ int main()
                 if (choice > -1) {
                     last_used_child = choice;
                     deny_show_stats_all();
-                    nanosleep(&sleeptime, NULL);
+                    sleep(2);
+                    printf("Waiting for child_%02d...\n", choice);
                     child_PROC[last_used_child].isCanShowStat = true;
-                    nanosleep(&sleeptime, NULL);
+                    sleep(5);
                     allow_show_stats_all();
                 }
                 break;
