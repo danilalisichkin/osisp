@@ -1,32 +1,24 @@
-// В программе открываются 2 файла:
-// 1ый - для чтения, 2ой - для записи
-// считываем из 1го файла список людей отсортированных по id
-// заносим список людей в бинарные деревья 2ух типов:
-// 1ое - с моим аллокатором, 2ое - со стандартным аллокатором
-// добавляем узлы для последующего поиска --> считаем кол-во обращений к malloc().
-// результат в консоль: кол-во обращений при разном алгоритме аллокации,
-// делаем выводы, какой лучше работает :)
-
-// 1) при выборе опции "Поиск по фамилии / имени":
-// ищем в дереве записи, возвращаем массив подходящих людей.
-// 2) при выборе опции "Сортировка в файл":
-// проходимся по дереву в отсортированном порядке по имени+фамилии,
-// записываем во 2ой файл.
-
 #include "stdbool.h"
 
-#include "person.h"
-#include "my_btree.h"
-#include "standart_btree.h"
+#include "libs/person.h"
+#include "libs/my_btree.h"
+#include "libs/standart_btree.h"
 
 #define OLD_FILE "was.txt"
 #define NEW_FILE "became.txt"
 
 void write_tree_to_file(Node *node, FILE *file);
-struct person* find_by_name(Node *root, char *p_name);
 
-int main() {
-    // ПОДГОТОВКА
+int find_by_name(Node *root, char *p_name, struct person *persons, int *size);
+
+char* read_string();
+
+void skip_stdin();
+
+int main()
+{
+    int id;
+
     FILE *file_was, *file_became;
     file_was = fopen(OLD_FILE, "r");
     file_became = fopen(NEW_FILE, "a");
@@ -37,119 +29,164 @@ int main() {
     struct Tree *tree;
     tree = tree_init(&pool);
 
-    struct standart_Tree *standart_tree;
-    standart_tree = st_tree_init();
+    struct standart_Tree *st_tree;
+    st_tree = st_tree_init();
 
-    struct person *persons;
-    persons = (struct person *) malloc(sizeof(struct person));
     int p_index = 0;
 
     char *buf = malloc(256 * sizeof(char));
 
     while (fgets(buf, 256, file_was))
     {
-        buf[strcspn(buf, "\n")] = '\0'; // удаление символа перевода строки из считанной строки
-        persons = (struct person *) realloc(persons, (++p_index) * sizeof(struct person));
-        persons[p_index - 1] = *parse_person(buf);
+        buf[strcspn(buf, "\n")] = '\0';
+        struct person _person;
+        _person = *parse_person(buf);
+        insert_node(tree, _person.id, _person.name);
+        st_insert_node(st_tree, _person.id, _person.name);
+        id = _person.id;
     }
 
     free(buf);
 
-    for (int i = 0; i < p_index; i++)
-    {
-        insert_node(tree, persons[i].id, persons[i].name);
-        st_insert_node(standart_tree, persons[i].id, persons[i].name);
-    }
-
-    // пока чисто для теста
-
-    printf("\n\n\n[RESULT FROM MY TREE]:\n\n");
-    struct Node* node = tree->root;
-    while (node != NULL)
-    {
-        printf("%02d %s\n", node->p_id, node->p_name);
-        node=node->right;
-    }
-    printf("[MY COUNTER]: %d\n", get_malloc_calls());
-
-    printf("\n\n\n[RESULT FROM STANDART TREE]:\n\n");
-    struct standart_Node * st_node = standart_tree->root;
-    while (st_node != NULL)
-    {
-        printf("%02d %s\n", st_node->key, st_node->value);
-        st_node=st_node->right;
-    }
-    printf("[STANDART COUNTER]: %d\n", st_get_malloc_calls());
+    printf("[COUNTER OF CALLING MALLOC() FUNCTION]\n");
+    printf("IN MY TREE: %d | IN STANDARD TREE: %d\n", get_malloc_calls(), st_get_malloc_calls());
 
     printf("Choose your option:\n");
-    printf("(1) - search by name/surname in tree.\n");
-    printf("(2) - sort by name+surname to file.\n");
-    printf("(Q) - exit.\n");
+    printf("'1' - search by name/surname in tree.\n");
+    printf("'2' - sort by name+surname to file.\n");
+    printf("'3' - add person to a btree\n");
+    printf("'4' - show btree like list\n");
+    printf("'q' - exit.\n");
 
     bool exit = false;
-    while(exit == false)
+    while (!exit)
     {
         char ch;
         rewind(stdin);
         ch = getchar();
         switch(ch)
         {
-            case '1': // ОШИБКА СЕГМЕНТАЦИИ
+            case '1':
             {
-                char* name;
+                skip_stdin();
+                char *name;
                 printf("Name: ");
-                scanf("%s", name);
-                struct person* persons = find_by_name(tree->root, name);
-                printf("\nYour result:\n");
-                int i = 0;
-                while (persons[i].name!=NULL)
+                
+                while(1)
                 {
-                    printf("%02d %s", persons[i].id, persons[i].name);
-                    i++;
+                    name = read_string();
+                    if (name != NULL) break;
+                    printf("Name can't be empty!\n Repeat: ");
+                }
+                
+
+                struct person *persons = (struct person*)malloc(sizeof(struct person));
+                int size = 0;
+
+                printf("\nYour result:\n");
+
+                if (find_by_name(tree->root, name, persons, &size)) {
+                    for (int i = 0; i < size; i++)
+                    {
+                        printf("%02d %s\n", persons[i].id, persons[i].name);
+                    }
+                } else {
+                    printf("Found nothing.\n");
                 }
                 break;
             }
             case '2':
             {
                 write_tree_to_file(tree->root, file_became);
+                printf("Tree successfully writen to file.\n");
+                break;
+            }
+            case '3':
+            {
+            	skip_stdin();
+                char *name = NULL;
+                printf("Name: ");
+
+                while(1)
+                {
+                    name = read_string();
+                    if (name != NULL) break;
+                    printf("Name can't be empty!\n Repeat: ");
+                }
+
+                insert_node(tree, ++id, name);
+                printf("Person successfully inserted in tree.\n");
+                break;
+            }
+            case '4':
+            {
+                printf("Your tree:\n");
+                print_tree_like_list(tree->root);
+                break;
             }
             case 'q':
             {
                 exit = true;
+                break;
             }
         }
     }
 
-    free(persons);
-    //mem_pool_destroy(&pool);
+    delete_tree(tree, tree->root);
+    st_delete_tree(st_tree, st_tree->root);
+
+    mem_pool_destroy(&pool);
+
     fclose(file_was);
     fclose(file_became);
+
+    printf("[COUNTER OF CALLING FREE() FUNCTION]\n");
+    printf("IN MY TREE: %d | IN STANDARD TREE: %d\n", get_free_calls(), st_get_free_calls());
 
     return 0;
 }
 
-void write_tree_to_file(Node* node, FILE *file)
+int find_by_name(Node *root, char *p_name, struct person *persons, int *size)
 {
-    if (node == NULL) return;
-    write_tree_to_file(node->left, file);
-    fprintf(file, "%02d %s\n", node->p_id, node->p_name);
-    write_tree_to_file(node->right, file);
+    if (root == NULL) {
+        return *size;
+    }
+
+    *size = find_by_name(root->left, p_name, persons, size);
+    if (strstr(root->p_name, p_name) != NULL) {
+        persons[(*size)++] = *new_person(root->p_name, root->p_id);
+    }
+    *size = find_by_name(root->right, p_name, persons, size);
+    return *size;
 }
 
+char* read_string() {
+    char *str = NULL;
+    int size = 0;
+    int c = EOF;
+    bool isEmpty = true;
 
-struct person* find_by_name(Node *root, char *p_name)
+    while ((c = getchar()) != '\n' && c != EOF) {
+        if (c != ' ') isEmpty = false;
+        str = realloc(str, ++size);
+        str[size-1] = c;
+    }
+
+    if (isEmpty && str != NULL) {
+        free(str);
+        str = NULL;
+    }
+
+    if (str != NULL) str[size] = '\0';
+
+    return str;
+}
+
+void skip_stdin()
 {
-    static struct person* persons;
-    static int size;
-
-    if (root == NULL) { // если дерево пустое или узел не найден
-        return NULL;
-    }
-    find_by_name(root->left, p_name);
-    if (strstr(root->p_name, p_name) != NULL) {
-        persons = (struct person*) realloc(persons, (++size) * sizeof(struct person));
-        persons[size-1] = *new_person(root->p_name, root->p_id);
-    }
-    find_by_name(root->right, p_name);
-    return persons;
+    char c;
+    do
+    {
+        c = getchar();
+    } while (c!='\n' && c!=EOF);
 }

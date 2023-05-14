@@ -1,25 +1,39 @@
 // Лисичкин Д.А. 150502
 // субаллокатор памяти (за основу - однонаправленный список)
-// последнее изменение: 30.04.23
+// последнее изменение: 14.05.23
 
 #include "my_alloc.h"
 
-static int my_counter; // счетчик обращений к malloc()
+static int my_ml_counter; // счетчик обращений к malloc()
+static int my_fr_counter; // счетчик обращений к free()
 
 int get_malloc_calls()
 {
-    return my_counter;
+    return my_ml_counter;
+}
+
+int get_free_calls()
+{
+    return my_fr_counter;
 }
 
 // инициализация пула памяти
 void mem_pool_init(struct mem_pool *pool, size_t size)
 {
+    if (!size) {
+        perror("Incorrect size of memory space to initialize!\n");
+        exit(1);
+    }
     // получаем адрес начала пула
     pool->start = malloc(size);
-    my_counter++;
+    if (pool->start == NULL) {
+        perror("Can't initialize required space in memory using malloc()!\n");
+        exit(1);
+    }
+    my_ml_counter++;
     // получаем адрес текущего блока
     pool->current = (struct mem_block*)pool->start;
-    pool->current->addr = pool->start + sizeof(struct mem_block);
+    pool->current->addr = (char*)pool->start + sizeof(struct mem_block);
     pool->current->size = size - sizeof(struct mem_block);
     pool->current->next = NULL;
 }
@@ -31,9 +45,9 @@ void mem_block_init(struct mem_pool *pool, size_t size)
     size_t block_size = size + sizeof(struct mem_block);
     // адресуемся на пустое место в памяти с нужным размером
     void *block_addr = malloc(block_size);
-    my_counter++;
+    my_ml_counter++;
     struct mem_block *new_block = (struct mem_block*)block_addr;
-    new_block->addr = block_addr + sizeof(struct mem_block);
+    new_block->addr = (char*)block_addr + sizeof(struct mem_block);
     new_block->size = block_size - sizeof(struct mem_block);
     // создаем новую "голову"
     new_block->next = pool->current;
@@ -47,7 +61,7 @@ void* mem_alloc(struct mem_pool *pool, size_t size) {
     while (current != NULL) {
         if (current->size >= size) {
             void *addr = current->addr;        // указатель на начало инициализированного блока
-            current->addr += size;
+            current->addr = (void*)((char*)current->addr + size);
             current->size -= size;             // уменьшаем свободное место в блоке
             return addr;                       // нашли - будем работать с ним!
         }
@@ -60,8 +74,14 @@ void* mem_alloc(struct mem_pool *pool, size_t size) {
 
 void mem_free(struct mem_pool *pool, void *addr)
 {
+    if (pool == NULL || addr == NULL) {
+        perror("Can't free not allocated memory!\n");
+        return;
+    }
     // вычисляем положение блока в пуле
-    struct mem_block *block = (struct mem_block*)((char*)addr - sizeof(struct mem_block));
+
+    struct mem_block *block = (struct mem_block*)((char*)addr);
+
     block->next = NULL;
     if (pool->current == NULL) {
         pool->current = block;
@@ -77,8 +97,6 @@ void mem_free(struct mem_pool *pool, void *addr)
 void mem_pool_destroy(struct mem_pool *pool) {
     if (pool->start != NULL) {
         free(pool->start);
-    }
-    if (pool->current != NULL) {
-        free(pool->current);
+        my_fr_counter++;
     }
 }

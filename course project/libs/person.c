@@ -6,7 +6,7 @@
 #include "person.h"
 
 // Функция для создания новой структуры person
-struct person *new_person(char *name, int id) {
+struct person* new_person(char *name, int id) {
     struct person *p = malloc(sizeof(struct person));
     p->name = malloc(sizeof(name));
     strcpy(p->name, name);
@@ -21,7 +21,7 @@ void free_person(struct person *p) {
 }
 
 // Функция для парсинга записи вида "[ID] [NAME]" в структуру person
-struct person *parse_person(char *line) {
+struct person* parse_person(char *line) {
     char *token = strtok(line, " ");
     int id = atoi(token);
     token = strtok(NULL, "\n");

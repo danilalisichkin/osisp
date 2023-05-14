@@ -1,9 +1,6 @@
 // Лисичкин Д.А. 150502
 // бинарное дерево
 // последнее изменение: 30.04.23
-// to add:
-// 1) надо бы добавить вес к узлам, чтоб потом можно было строить дерево поиска
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,5 +43,11 @@ void delete_key(Tree *tree, char *p_name);
 // Рекурсивная функция для поиска узла в дереве по имени+фамилии
 Node* find_node(Node *root, char *p_name);
 
+// Вывод узлов дерева
+void print_tree_like_list(Node *node);
+
 // Удаление всего дерева
 void delete_tree(Tree *tree, Node *node);
+
+// Запись дерева в файл
+void write_tree_to_file(Node* node, FILE *file);

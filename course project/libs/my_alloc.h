@@ -1,6 +1,6 @@
 // Лисичкин Д.А. 150502
 // субаллокатор памяти (за основу - однонаправленный список)
-// последнее изменение: 30.04.23
+// последнее изменение: 14.05.23
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +20,8 @@ struct mem_pool
 };                              // ="голова"
 
 int get_malloc_calls();
+
+int get_free_calls();
 
 // инициализация пула памяти
 void mem_pool_init(struct mem_pool *pool, size_t size);
