@@ -17,86 +17,101 @@ int get_free_calls()
     return my_fr_counter;
 }
 
-// инициализация пула памяти
-void mem_pool_init(struct mem_pool *pool, size_t size)
+// Инициализация пула памяти
+void mem_pool_init(struct mem_pool *pool, size_t pool_size, size_t block_size)
 {
-    if (!size) {
-        perror("Incorrect size of memory space to initialize!\n");
+    if (pool_size == 0)
+    {
+        fprintf(stderr, "Incorrect size of memory space to initialize!\n");
         exit(1);
     }
-    // получаем адрес начала пула
-    pool->start = malloc(size);
-    if (pool->start == NULL) {
-        perror("Can't initialize required space in memory using malloc()!\n");
+
+    // Выделение памяти для пула
+    pool->start = malloc(pool_size);
+    ++my_ml_counter;
+    if (pool->start == NULL)
+    {
+        fprintf(stderr,"Can't initialize %ld bytes in memory for pool using malloc()!\n", pool_size);
         exit(1);
     }
-    my_ml_counter++;
-    // получаем адрес текущего блока
-    pool->current = (struct mem_block*)pool->start;
-    pool->current->addr = (char*)pool->start + sizeof(struct mem_block);
-    pool->current->size = size - sizeof(struct mem_block);
-    pool->current->next = NULL;
+
+    // Разбиение пула на блоки заданного размера
+    size_t real_block_size = sizeof(struct mem_block) + block_size;
+    size_t num_blocks = pool_size / real_block_size;
+
+    struct mem_block *prev_block = NULL;
+
+    for (size_t i = 0; i < num_blocks; i++)
+    {
+        struct mem_block *block = (struct mem_block *)((char *)pool->start + i * real_block_size);
+        block->addr = (char*)block + sizeof(struct mem_block);
+        block->size = block_size;
+        block->next = NULL;
+
+        pool->block_size = block_size;
+
+        if (prev_block != NULL) prev_block->next = block;
+
+        prev_block = block;
+    }
+
+    // Установка текущего блока на первый блок в пуле
+    pool->current = (struct mem_block *)pool->start;
 }
 
-// пул памяти и размер нужного блока
-void mem_block_init(struct mem_pool *pool, size_t size)
+// Выделение памяти из пула
+void *mem_alloc(struct mem_pool *pool, size_t size)
 {
-    // определяем нужный размер (=размер блока + размер данных)
-    size_t block_size = size + sizeof(struct mem_block);
-    // адресуемся на пустое место в памяти с нужным размером
-    void *block_addr = malloc(block_size);
-    my_ml_counter++;
-    struct mem_block *new_block = (struct mem_block*)block_addr;
-    new_block->addr = (char*)block_addr + sizeof(struct mem_block);
-    new_block->size = block_size - sizeof(struct mem_block);
-    // создаем новую "голову"
-    new_block->next = pool->current;
-    pool->current = new_block;
-}
-
-void* mem_alloc(struct mem_pool *pool, size_t size) {
-    // адресуемся на текущий инициализированный блок памяти
+    // Поиск блока с достаточным свободным местом
     struct mem_block *current = pool->current;
-    // ищем пустной блок в пуле нужного размера
-    while (current != NULL) {
-        if (current->size >= size) {
-            void *addr = current->addr;        // указатель на начало инициализированного блока
-            current->addr = (void*)((char*)current->addr + size);
-            current->size -= size;             // уменьшаем свободное место в блоке
-            return addr;                       // нашли - будем работать с ним!
+    while (current != NULL)
+    {
+        if (current->size >= size && current->size == pool->block_size)
+        {
+            void *addr = current->addr; // Указатель на начало блока
+            current->addr = (void *)((char *)current->addr + size);
+            current->size -= size; // Уменьшение свободного места в блоке
+            return addr;           // Возвращаем адрес начала блока
         }
         current = current->next;
     }
-    // если подходящий блок не найден - создаем его
-    mem_block_init(pool, size);
-    return pool->current->addr;
+
+    // Если подходящий блок не найден
+    fprintf(stderr, "No enough memory in the pool!\n");
+    return NULL;
 }
 
+// Освобождение памяти и возвращение в пул
 void mem_free(struct mem_pool *pool, void *addr)
 {
-    if (pool == NULL || addr == NULL) {
-        perror("Can't free not allocated memory!\n");
+    if (pool == NULL || addr == NULL)
+    {
+        fprintf(stderr, "Can't free not allocated memory!\n");
         return;
     }
-    // вычисляем положение блока в пуле
 
-    struct mem_block *block = (struct mem_block*)((char*)addr);
 
-    block->next = NULL;
-    if (pool->current == NULL) {
-        pool->current = block;
-    } else {
-        struct mem_block *current = pool->current;
-        while (current->next != NULL) {
-            current = current->next;
-        }
-        current->next = block;
+    struct mem_block *block = (struct mem_block *)((char *)addr - sizeof(struct mem_block));
+
+    if(block!=pool->current) {
+        struct mem_block *prev_block = (struct mem_block *)((char *)addr - pool->block_size - 2*sizeof(struct mem_block));
+        prev_block->next = block->next;
     }
+
+    block->next = pool->current;
+    block->addr = (void*)((char*)block->addr - (pool->block_size - block->size));
+    block->size = pool->block_size;
+    pool->current = block;
 }
 
-void mem_pool_destroy(struct mem_pool *pool) {
-    if (pool->start != NULL) {
+// Освобождение пула памяти и освобождение занятой памяти
+void mem_pool_destroy(struct mem_pool *pool)
+{
+    if (pool != NULL)
+    {
         free(pool->start);
-        my_fr_counter++;
+        ++my_fr_counter;
+        pool->start = NULL;
+        pool->current = NULL;
     }
 }

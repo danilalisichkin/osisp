@@ -1,45 +1,59 @@
-#include "my_btree.h"
+#include "standard_btree.h"
+
+static int st_ml_counter; // счетчик обращений к malloc()
+static int st_fr_counter; // счетчик обращений к free()
+
+int st_get_malloc_calls()
+{
+    return st_ml_counter;
+}
+
+int st_get_free_calls()
+{
+    return st_fr_counter;
+}
 
 // Инициализация бинарного дерева
-Tree* tree_init(struct mem_pool* pool)
+standard_Tree* st_tree_init()
 {
-    Tree* tree = (Tree*)mem_alloc(pool, sizeof(Tree)); // выделяем память под дерево
+    standard_Tree *tree = (standard_Tree*)malloc(sizeof(standard_Tree)); // выделяем память под дерево
     tree->root = NULL; // корневой узел пока не существует
-    tree->pool = pool; // запоминаем пул памяти для выделения узлов
     return tree;
 }
 
 // Функция создания нового узла дерева
-Node* create_node(struct mem_pool* pool, int p_id, const char *p_name)
+standard_Node* st_create_node(int p_id, const char *p_name)
 {
-    Node* node = (Node*)mem_alloc(pool, sizeof(Node)); // выделяем память под узел
+    standard_Node* node = (standard_Node*)malloc(sizeof(standard_Node)); // выделяем память под узел
+    st_ml_counter++;
     node->p_id = p_id; // сохраняем айди
-    size_t size = strlen(p_name) + 1;
-    node->p_name = (char*)mem_alloc(pool, size * sizeof(char)); // сохраняем имя+фамилию
-    strcpy(node->p_name, p_name);
-    node->left = NULL;  // левый узел пока не существует
+    node->p_name = malloc(strlen(p_name) + 1);
+    strcpy(node->p_name, p_name); // сохраняем имя+фамилию
+    st_ml_counter++;
+    node->left = NULL; // левый узел пока не существует
     node->right = NULL; // правый узел пока не существует
     return node;
 }
 
 // Вставка нового узла в бинарное дерево
-void insert_node(Tree *tree, int p_id, const char *p_name)
+void st_insert_node(standard_Tree *tree, int p_id, const char *p_name)
 {
     // Если дерево пустое, создаем корневой узел
     if (tree->root == NULL)
     {
-        tree->root = create_node(tree->pool, p_id, p_name);
+        tree->root = st_create_node(p_id, p_name);
         return;
     }
 
     // Начинаем поиск с корневого узла
-    Node *current = tree->root;
+    standard_Node *current = tree->root;
 
     while (1) // продолжаем поиск пока не найдем место для вставки
     {
+
         int result = strcmp(p_name, current->p_name);
 
-        // Если фамилия+имя уже существует, обновляем значение идентификатора и выходим
+        // Если ключ уже существует, обновляем значение и выходим
         if (result == 0)
         {
             current->p_id = p_id;
@@ -49,7 +63,7 @@ void insert_node(Tree *tree, int p_id, const char *p_name)
         {
             if (current->left == NULL) // если левый узел пустой, создаем новый узел
             {
-                current->left = create_node(tree->pool, p_id, p_name);
+                current->left = st_create_node(p_id, p_name);
                 return;
             }
             else // иначе продолжаем поиск в левом поддереве
@@ -61,7 +75,7 @@ void insert_node(Tree *tree, int p_id, const char *p_name)
         {
             if (current->right == NULL) // если правый узел пустой, создаем новый узел
             {
-                current->right = create_node(tree->pool, p_id, p_name);
+                current->right = st_create_node(p_id, p_name);
                 return;
             }
             else // иначе продолжаем поиск в правом поддереве
@@ -72,8 +86,8 @@ void insert_node(Tree *tree, int p_id, const char *p_name)
     }
 }
 
-// Функция для поиска наименьего узла в дереве
-Node* find_min_node(Node *root) {
+// Функция поиска минимального узла
+standard_Node* st_find_min_node(standard_Node *root) {
     if (root == NULL) {
         return NULL;
     }
@@ -84,7 +98,7 @@ Node* find_min_node(Node *root) {
 }
 
 // Рекурсивная функция для поиска узла в дереве по имени человека
-Node* find_node_by_p_name(Node *root, const char *p_name)
+standard_Node* st_find_node_by_p_name(standard_Node *root, const char *p_name)
 {
     if (root == NULL) { // если дерево пустое или узел не найден
         return NULL;
@@ -95,28 +109,28 @@ Node* find_node_by_p_name(Node *root, const char *p_name)
     if (result == 0) { // если ключ найден в текущем узле
         return root;
     } else if (result < 0) { // если ключ меньше текущего узла, ищем в левом поддереве
-        return find_node_by_p_name(root->left, p_name);
+        return st_find_node_by_p_name(root->left, p_name);
     } else { // иначе ключ больше текущего узла
-        return find_node_by_p_name(root->right, p_name);
+        return st_find_node_by_p_name(root->right, p_name);
     }
 }
 
 // Рекурсивная функция для поиска узла в дереве по айди человека
-Node* find_node_by_id(Node *root, int p_id)
+standard_Node* st_find_node_by_id(standard_Node *root, int p_id)
 {
     if (root == NULL) return NULL;
 
     if (root->p_id == p_id) return root;
 
-    Node *found = find_node_by_id(root->left, p_id);
+    standard_Node *found = st_find_node_by_id(root->left, p_id);
     if (found == NULL) {
-        found = find_node_by_id(root->right, p_id);
+        found = st_find_node_by_id(root->right, p_id);
     }
     return found;
 }
 
 // Рекурсивная функция для поиска РОДИТЕЛЯ узла в дереве по его адресу
-Node** find_parent_node(Node** current, Node* node) {
+standard_Node** st_find_parent_node(standard_Node** current, standard_Node* node) {
     if (*current == NULL || node == NULL) {
         return NULL;
     }
@@ -130,32 +144,32 @@ Node** find_parent_node(Node** current, Node* node) {
         return current; // Нашли родителя
     }
 
-    Node** parent = find_parent_node(&((*current)->left), node);
+    standard_Node** parent = st_find_parent_node(&((*current)->left), node);
     if (parent != NULL) {
         return parent;
     }
 
-    return find_parent_node(&((*current)->right), node);
+    return st_find_parent_node(&((*current)->right), node);
 }
 
 // Функция для удаления узла с заданным именем
-void delete_node_by_name(Tree *tree, Node *root, const char *p_name)
+void st_delete_node_by_name(standard_Tree *tree, standard_Node *root, const char *p_name)
 {
     if (root == NULL) return; // нет корневого узла
 
-    Node *to_delete = find_node_by_p_name(tree->root, p_name);
-    Node **parent = find_parent_node(&tree->root, to_delete);
-    delete_node(tree, &to_delete, parent);
+    standard_Node *to_delete = st_find_node_by_p_name(tree->root, p_name);
+    standard_Node **parent = st_find_parent_node(&tree->root, to_delete);
+    st_delete_node(tree, &to_delete, parent);
 }
 
 // Функция для удаления узла из дерева
-void delete_node(Tree *tree, Node **current, Node **parent)
+void st_delete_node(standard_Tree *tree, standard_Node **current, standard_Node **parent)
 {
     if (*current == NULL) return; // если нет узла
 
     if (parent == NULL) parent = &tree->root;
 
-    Node *to_delete = *current;
+    standard_Node *to_delete = *current;
 
     if ((*current)->left == NULL && (*current)->right == NULL) { // Если нет потомков
         if ((*parent)->right == to_delete) (*parent)->right = NULL; // Зануляем указатель на удаляемый в родительском
@@ -172,55 +186,58 @@ void delete_node(Tree *tree, Node **current, Node **parent)
     }
     else // Узел имеет двух потомков
     {
-        Node *min = find_min_node((*current)->right); // находим минимальный узел в правом поддереве
-        Node **parent_min = find_parent_node(current, min); // ищем родителя минимального узла правого поддерева
+        standard_Node *min = st_find_min_node((*current)->right); // находим минимальный узел в правом поддереве
+        standard_Node **parent_min = st_find_parent_node(current, min); // ищем родителя минимального узла правого поддерева
 
         if (*current != tree->root) { // Если не корень дерева
             if ((*parent)->right == to_delete) (*parent)->right = min; // Меняем указатель в родительском
             else (*parent)->left = min;
         } else tree->root = min;
 
-        if ((*parent_min)->left == min) (*parent_min)->left = min->right; // Меняем указатель в родит. минимального
+        if ((*parent_min)->left == min) (*parent_min)->left = min->right;   // Меняем указатель в родит. минимального
         else (*parent_min)->right = min->right;
 
         min->right = to_delete->right; // Привязывем ветки удаляемого к вставленному вместо него
         min->left = to_delete->left;
     }
 
-    mem_free(tree->pool, to_delete->p_name); // Очищаем память для удаляемого узла
-    mem_free(tree->pool, to_delete);
+    free(to_delete->p_name); // Очищаем память для удаляемого узла
+    free(to_delete);
+    st_fr_counter+=2;
 }
 
 // Удаление всего дерева
-void delete_tree(Tree *tree, Node **node) {
+void st_delete_tree(standard_Tree *tree, standard_Node **node) {
     if (*node == NULL) {
         return;
     }
 
-    delete_tree(tree, &((*node)->left));
-    delete_tree(tree, &((*node)->right));
-    mem_free(tree->pool, (*node)->p_name);
-    mem_free(tree->pool, *node);
+    st_delete_tree(tree, &((*node)->left));
+    st_delete_tree(tree, &((*node)->right));
+
+    free((*node)->p_name);
+    free(*node);
+    st_fr_counter+=2;
 
     *node = NULL;
 }
 
 // Вывод узлов дерева
-void print_tree_like_list(Node *node)
+void st_print_tree_like_list(standard_Node *node)
 {
     if (node == NULL) return;
 
-    print_tree_like_list(node->left);
+    st_print_tree_like_list(node->left);
     printf("%02d %s\n", node->p_id, node->p_name);
-    print_tree_like_list(node->right);
+    st_print_tree_like_list(node->right);
 }
 
 // Запись дерева в файл
-void write_tree_to_file(Node* node, FILE *file)
+void st_write_tree_to_file(standard_Node *node, FILE *file)
 {
     if (node == NULL) return;
 
-    write_tree_to_file(node->left, file);
+    st_write_tree_to_file(node->left, file);
     fprintf(file, "%02d %s\n", node->p_id, node->p_name);
-    write_tree_to_file(node->right, file);
+    st_write_tree_to_file(node->right, file);
 }

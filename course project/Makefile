@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -W -Wall -Wno-unused-parameter -Wno-unused-variable -std=c11 -pedantic
+CFLAGS = -W -Wall -Werror -Wno-unused-parameter -Wno-unused-variable -Wredundant-decls -finput-charset=UTF-8 -std=c11 -pedantic
 LDFLAGS = -lm
 
-SRCS = main.c libs/my_alloc.c libs/my_btree.c libs/person.c libs/standart_btree.c
+SRCS = main.c libs/my_alloc.c libs/my_btree.c libs/person.c libs/standard_btree.c libs/utilities.c
 OBJS = $(SRCS:.c=.o)
 
 make: main
