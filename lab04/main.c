@@ -363,12 +363,12 @@ int main()
                 quit();
                 break;
             }
-            case '\n': break;
             case 't':
             {
                 test();
                 break;
             }
+            case '\n': break;
             default:
             {
                 print_usage();
@@ -378,3 +378,4 @@ int main()
     }
     return 0;
 }
+

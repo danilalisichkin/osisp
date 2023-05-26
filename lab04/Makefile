@@ -1,4 +1,4 @@
-CFLAGS = -W -Wall -Wno-unused-parameter -Wno-unused-variable -std=c11 -pedantic
+CFLAGS = -W -Wall -Wno-unused-parameter -Wno-unused-variable -lrt -std=c11 -pedantic
 CC = gcc
 
 make: main
