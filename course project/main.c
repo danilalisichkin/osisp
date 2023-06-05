@@ -1,3 +1,6 @@
+#define __USE_POSIX199506
+
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,11 +11,11 @@
 #include "libs/my_btree.h"
 #include "libs/standard_btree.h"
 
-#define NEW_FILE "result.txt"
-
 #define NAME_FILE "src/names.txt"
 #define SURNAME_FILE "src/surnames.txt"
 #define GENERATED_FILE "src/generated.txt"
+
+int num_of_persons;
 
 void print_launch();
 
@@ -26,7 +29,10 @@ void find_persons_by_substr(Node *root, const char *p_name, struct array_of_pers
 
 struct array_of_persons *find_person(Tree *tree, int id);
 
-int main(int argc, char *argv[]) {
+void remove_random_persons(Tree* tree, standard_Tree *st_tree, int number, int max_id);
+
+int main(int argc, char *argv[])
+{
 
     if (argc < 2 || argc > 3) {
         print_launch();
@@ -36,16 +42,19 @@ int main(int argc, char *argv[]) {
     setlocale(LC_ALL, "ru_RU.UTF-8");
 
     remove(GENERATED_FILE);
+    remove(STATS_LWT);
+    remove(STATS_SWT);
+    remove(ST_STATS_LWT);
+    remove(ST_STATS_SWT);
 
+    num_of_persons = 0;
     int id;
 
-    FILE *file_was, *file_became;
+    FILE *file_was = NULL;
 
     struct mem_pool pool;
     struct Tree *tree;
     struct standard_Tree *st_tree;
-
-    size_t file_size;
 
     if (argc == 2) {
         file_was = fopen(argv[1], "r");
@@ -53,11 +62,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Source \"%s\" file not found!\n", argv[1]);
             exit(1);
         }
-
-        fseek(file_was, 0, SEEK_END);
-        size_t file_size = ftell(file_was);
-        fseek(file_was, 0, SEEK_SET);
-
+        id = get_id_from_src_file(file_was);
     } else if (argc == 3) {
         if (strcmp(argv[1], "-g") == 0 && is_number(argv[2])) {
             int num = atoi(argv[2]);
@@ -66,15 +71,18 @@ int main(int argc, char *argv[]) {
             FILE *file_names = fopen(NAME_FILE, "r");
             FILE *file_surnames = fopen(SURNAME_FILE, "r");
 
-            generate_names(file_generated, file_names, file_surnames, num);
+            if (file_names == NULL || file_surnames == NULL) {
+                fprintf(stderr, "Failed to open src/names.txt or src/surnames.txt!\n");
+                exit(1);
+            }
 
-            fseek(file_generated, 0, SEEK_END);
-            file_size = ftell(file_generated);
+            generate_names(file_generated, file_names, file_surnames, num);
 
             fclose(file_generated);
             fclose(file_names);
 
             file_was = fopen(GENERATED_FILE, "r");
+            id = num;
         }
         else {
             print_launch();
@@ -82,22 +90,91 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    mem_pool_init(&pool, file_size * 20, sizeof(Node));
+    size_t pool_size = id * (sizeof(Node) + MAX_NAME_SIZE);
+    if (id <= 10) {
+        pool_size += 5 * pool_size;
+    } else if (id > 10 && id <= 50) {
+        pool_size += 2 * pool_size;
+    } else if (id > 50 && id <= 100) {
+        pool_size += pool_size;
+    } else if (id > 100 && id <= 250) {
+        pool_size += pool_size;
+    } else if (id > 250 && id <= 500) {
+        pool_size += pool_size;
+    } else if (id > 500) {
+        pool_size += pool_size / 2;
+    }
+
+    char *choose_strategy = "Choose allocation strategy.\n"
+                            "'1' - FIRST_FIT.\n"
+                            "'2' - BEST_FIT.\n"
+                            "'3' - WORST_FIT.\n";
+    printf("%s", choose_strategy);
+    char mode;
+    while (1)
+    {
+        fflush(stdin);
+        mode = getchar();
+        if (mode == '1') mem_pool_init(&pool, pool_size, FIRST_FIT);
+        else if (mode == '2') mem_pool_init(&pool, pool_size, BEST_FIT);
+        else if (mode == '3') mem_pool_init(&pool, pool_size, WORST_FIT);
+        else continue;
+        break;
+    }
+
+    init_stat(&stats);
+    init_stat(&st_stats);
+
+    open_stat_files();
+
+    char *see_stats = "Want see statistic?\n"
+                      "'y' - yes.\n"
+                      "'n' - no.\n";
+    printf("%s", see_stats);
+    while (1)
+    {
+        fflush(stdin);
+        mode = getchar();
+        if (mode == 'y') {
+            allow_show_stat(&stats);
+            allow_show_stat(&st_stats);
+            break;
+        }
+        else if (mode == 'n') break;
+        else continue;
+    }
+
     tree = tree_init(&pool);
     st_tree = st_tree_init();
 
+    fseek(file_was, 0, SEEK_SET);
     id = read_trees_from_file(file_was, tree, st_tree);
-
-    file_became = fopen(NEW_FILE, "w");
 
     printf("Enter 'u' to see usage.\n");
 
     int exit = 0;
-    while (!exit) {
+    while (!exit)
+    {
         char ch;
         fflush(stdin);
         ch = getchar();
         switch (ch) {
+            case 'a': {
+                allow_show_stat(&stats);
+                allow_show_stat(&st_stats);
+                printf("Allowed showing stats.\n");
+                break;
+            }
+            case 'd': {
+                deny_show_stat(&stats);
+                deny_show_stat(&st_stats);
+                printf("Denied showing stats.\n");
+                break;
+            }
+            case '!': {
+                printf("[ POOL STAT ] : [%s]\n", get_pool_stats(&pool));
+                break;
+            }
             case '+': {
                 skip_stdin();
                 char *name = NULL;
@@ -106,8 +183,8 @@ int main(int argc, char *argv[]) {
                 insert_node(tree, id, name);
                 st_insert_node(st_tree, id, name);
                 ++id;
-
-                printf("Person successfully inserted in tree.\n");
+                ++num_of_persons;
+                printf("(+) %d %s successfully inserted in tree.\n", id-1, name);
                 free(name);
                 break;
             }
@@ -137,13 +214,22 @@ int main(int argc, char *argv[]) {
                         if (choice >= 0 && choice < p_array.size) {
                             delete_node_by_name(tree, tree->root, p_array.persons[choice].name);
                             st_delete_node_by_name(st_tree, st_tree->root, p_array.persons[choice].name);
-                            printf("Person %02d %s is removed.\n", p_array.persons[choice].id,
+                            --num_of_persons;
+                            printf("(-) %d %s is removed.\n", p_array.persons[choice].id,
                                    p_array.persons[choice].name);
                         } else continue;
 
                         break;
                     }
                 }
+                break;
+            }
+            case 'r': {
+                if (num_of_persons < 10) {
+                    fprintf(stderr, "Can't remove 10 persons: theres only %d persons.\n", num_of_persons);
+                    break;
+                }
+                remove_random_persons(tree, st_tree, 10, id);
                 break;
             }
             case 'e': {
@@ -183,8 +269,19 @@ int main(int argc, char *argv[]) {
                 break;
             }
             case 's': {
-                write_tree_to_file(tree->root, file_became);
+                printf("Write file’s name: ");
+                char *f_name;
+                f_name = read_string();
+                skip_stdin();
+                FILE* file_result = NULL;
+                file_result = fopen(f_name, "w");
+                if (file_result == NULL) {
+                    fprintf(stderr, "Can't create result file!\n");
+                    break;
+                }
+                write_tree_to_file(tree->root, file_result);
                 printf("Tree successfully saved to file.\n");
+                fclose(file_result);
                 break;
             }
             case 'p': {
@@ -203,66 +300,82 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fclose(file_became);
     fclose(file_was);
 
     remove(GENERATED_FILE);
 
-    st_delete_tree(st_tree, &st_tree->root);
+    char *pool_stats = get_pool_stats(&pool);
+
     delete_tree(tree, &tree->root);
+    st_delete_tree(st_tree, &st_tree->root);
+
+    printf("Result statistic:\n");
+    printf("[ POOL STAT ] : [%s]\n", pool_stats);
 
     mem_pool_destroy(&pool);
 
-    printf("Count of calling malloc() function: \n");
-    printf("my: %d | standard: %d\n", get_malloc_calls(), st_get_malloc_calls());
+    allow_show_stat(&stats);
+    show_stats();
+    allow_show_stat(&st_stats);
+    st_show_stats();
 
-    printf("Count of calling free() function: \n");
-    printf("my: %d | standard: %d\n", get_free_calls(), st_get_free_calls());
-
+    free(pool_stats);
     return 0;
 }
 
-void print_launch() {
-    printf("Error while launching...\n");
-    printf("To launch:\n");
-    printf("./main -g [NUMBER]\n");
-    printf("or\n");
-    printf("./main [FILE NAME]\n");
-    printf("where\n");
-    printf("[NUMBER] - required num of generated persons.\n");
-    printf("[FILE NAME] - name of source file with persons.\n");
+void print_launch()
+{
+    char* launch = "Error while launching...\n"
+                   "To launch:\n"
+                   "./main -g [NUMBER]\n"
+                   "or\n"
+                   "./main [FILE NAME]\n"
+                   "where\n"
+                   "[NUMBER] - required num of generated persons.\n"
+                   "[FILE NAME] - name of source file with persons.\n";
+    printf("%s", launch);
 }
 
-void print_usage() {
-    printf("Choose your option:\n");
-    printf("'+' - add person.\n");
-    printf("'-' - remove person.\n");
-    printf("'e' - edit person.\n");
-    printf("'f' - find person.\n");
-    printf("'s' - save result tree to file.\n");
-    printf("'p' - print btree like list.\n");
-    printf("'q' - quit.\n");
-
+void print_usage()
+{
+    char* menu = "Choose your option:\n"
+                 "'a' - allow showing statistic.\n"
+                 "'d' - deny showing statistic.\n"
+                 "'!' - show pool statistic.\n"
+                 "'+' - add person.\n"
+                 "'-' - remove person.\n"
+                 "'r' - remove 10 random person.\n"
+                 "'e' - edit person.\n"
+                 "'f' - find person.\n"
+                 "'s' - save result tree to file.\n"
+                 "'p' - print btree like list.\n"
+                 "'q' - quit.\n";
+    printf("%s", menu);
 }
 
-int read_trees_from_file(FILE *file, Tree *tree, standard_Tree *st_tree) {
+int read_trees_from_file(FILE *file, Tree *tree, standard_Tree *st_tree)
+{
     int id = -1;
 
-    char *buf = (char *) malloc(256 * sizeof(char));
+    char *buf = (char *)malloc(256 * sizeof(char));
 
-    while (fgets(buf, 256, file) != NULL && !feof(file)) {
+    while (fgets(buf, 256, file) != NULL && !feof(file))
+    {
         buf[strcspn(buf, "\n")] = '\0';
 
         struct person _person;
         _person = *parse_person(buf);
 
         if (strlen(_person.name) >= MAX_NAME_SIZE) {
-            fprintf(stderr, "Can't add person to tree: name is too long.\n");
+            fprintf(stderr, "Can't add [%d %s] to tree: name is too long.\n",
+                    _person.id, _person.name);
             continue;
         }
 
         insert_node(tree, _person.id, _person.name);
         st_insert_node(st_tree, _person.id, _person.name);
+
+        ++num_of_persons;
 
         if (_person.id > id) id = _person.id;
     }
@@ -271,7 +384,8 @@ int read_trees_from_file(FILE *file, Tree *tree, standard_Tree *st_tree) {
     return id + 1;
 }
 
-struct array_of_persons *find_person(Tree *tree, int id) {
+struct array_of_persons *find_person(Tree *tree, int id)
+{
     printf("Find person according to:\n");
     printf("'1' - id\n");
     printf("'2' - name\n");
@@ -280,11 +394,12 @@ struct array_of_persons *find_person(Tree *tree, int id) {
     char *name = NULL;
     int _id;
 
-    struct array_of_persons *p_array = (struct array_of_persons *) malloc(sizeof(struct array_of_persons));
+    struct array_of_persons *p_array = (struct array_of_persons *)malloc(sizeof(struct array_of_persons));
     init_array_of_persons(p_array);
 
     char _ch;
-    while (1) {
+    while (1)
+    {
         fflush(stdin);
         _ch = getchar();
 
@@ -315,9 +430,8 @@ struct array_of_persons *find_person(Tree *tree, int id) {
 
     printf("Found:\n");
     if (p_array->size > 0) {
-
         for (int i = 0; i < p_array->size; i++) {
-            printf("(%d) %02d %s\n", i, p_array->persons[i].id, p_array->persons[i].name);
+            printf("(%d) %d %s\n", i, p_array->persons[i].id, p_array->persons[i].name);
         }
     } else {
         printf("Found nothing.\n");
@@ -326,13 +440,15 @@ struct array_of_persons *find_person(Tree *tree, int id) {
     return p_array;
 }
 
-void edit_person(Tree *tree, standard_Tree *st_tree, struct person _person, int *id) {
+void edit_person(Tree *tree, standard_Tree *st_tree, struct person _person, int *id)
+{
     printf("Choose option:\n");
     printf("'1' - update id.\n");
     printf("'2' - update name.\n");
     printf("'q' - cancel action.\n");
 
-    while (1) {
+    while (1)
+    {
         char ch;
         fflush(stdin);
         ch = getchar();
@@ -348,6 +464,9 @@ void edit_person(Tree *tree, standard_Tree *st_tree, struct person _person, int 
             delete_node_by_name(tree, tree->root, _person.name);
             insert_node(tree, *id, new_name);
 
+            st_delete_node_by_name(st_tree, st_tree->root, _person.name);
+            st_insert_node(st_tree, *id, new_name);
+
             ++(*id);
 
             free(new_name);
@@ -356,12 +475,42 @@ void edit_person(Tree *tree, standard_Tree *st_tree, struct person _person, int 
             break;
         } else continue;
 
-        printf("Person %02d %s is edited.\n", _person.id, _person.name);
+        printf("(e) %d %s is edited.\n", _person.id, _person.name);
         break;
     }
 }
 
-void find_persons_by_substr(Node *root, const char *p_name, struct array_of_persons *p_array) {
+void remove_random_persons(Tree* tree, standard_Tree *st_tree, int number, int max_id)
+{
+    int _id;
+    for (int i = 0; i < number; ++i)
+    {
+        _id = rand() % max_id;
+
+        Node *to_delete = find_node_by_id(tree->root, _id);
+
+        if (to_delete == NULL) {
+            --i;
+            continue;
+        } else {
+            printf("(-) %d %s is removed.\n", to_delete->p_id, to_delete->p_name);
+            delete_node(tree, &to_delete, find_parent_node(&tree->root, to_delete));
+        }
+
+        standard_Node *st_to_delete = st_find_node_by_id(st_tree->root, _id);
+        if (st_to_delete == NULL) {
+            --i;
+            continue;
+        } else {
+            st_delete_node(st_tree, &st_to_delete, st_find_parent_node(&st_tree->root, st_to_delete));
+        }
+
+        --num_of_persons;
+    }
+}
+
+void find_persons_by_substr(Node *root, const char *p_name, struct array_of_persons *p_array)
+{
     if (root == NULL) {
         return;
     }

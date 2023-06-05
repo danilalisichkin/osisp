@@ -1,12 +1,8 @@
-// Лисичкин Д.А. 150502
-// класс персона
-// класс для иллюстрации работы проекта
-// последнее изменение: 14.05.23
-
 #include "person.h"
 
 // Функция для создания новой структуры person
-struct person* new_person(char *name, int id) {
+struct person* new_person(char *name, int id)
+{
     struct person *_person = (struct person*)malloc(sizeof(struct person));
     int size = strlen(name) + 1;
     _person->name = (char*)malloc(size * sizeof(char));
@@ -17,13 +13,15 @@ struct person* new_person(char *name, int id) {
 }
 
 // Функция для освобождения памяти, выделенной для структуры person
-void free_person(struct person *p) {
+void free_person(struct person *p)
+{
     free(p->name);
     free(p);
 }
 
 // Функция для парсинга записи вида "[ID] [NAME]" в структуру person
-struct person* parse_person(char *line) {
+struct person* parse_person(char *line)
+{
     char *token = strtok(line, " ");
     if (!is_number(token)) { // Если структура файла нарушена
         fprintf(stderr, "Incorrect structure of source file!\n");
@@ -32,6 +30,10 @@ struct person* parse_person(char *line) {
     int id = atoi(token);
     token = strtok(NULL, "\n");
     int size = strlen(token) + 1;
+    if (size >= MAX_NAME_SIZE) {
+        fprintf(stderr, "Person's name is longer then %d symbols.\n", MAX_NAME_SIZE);
+        exit(1);
+    }
     char *name = (char*)malloc(size * sizeof(char));
     strcpy(name, token);
     name[size-1] = '\0';
@@ -41,7 +43,8 @@ struct person* parse_person(char *line) {
 }
 
 // Функция для добавления записи в текстовый файл
-int add_person(FILE *file, struct person *p) {
+int add_person(FILE *file, struct person *p)
+{
     fseek(file, 0, SEEK_END);
     fprintf(file, "%d %s\n", p->id, p->name);
     return 0;

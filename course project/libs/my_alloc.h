@@ -1,45 +1,65 @@
-#ifndef MY_ALLOC_H
-#define MY_ALLOC_H
+#ifndef OTHER_MY_ALLOC_H
+#define OTHER_MY_ALLOC_H
 
-// Лисичкин Д.А. 150502
-// субаллокатор памяти (за основу - однонаправленный список)
-// последнее изменение: 14.05.23
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <malloc.h>
 
-struct mem_block
+#include "statistic.h"
+
+extern statistic stats;
+
+enum alloc_strategy
 {
-    void *addr;             // указатель на начало блока
-    size_t size;            // размер блока
-    struct mem_block *next; // указатель на след блок
+    FIRST_FIT,
+    BEST_FIT,
+    WORST_FIT
 };
 
-struct mem_pool
+typedef struct mem_block
 {
-    size_t block_size;
-    void *start;                // указатель на начало пула
-    struct mem_block *current;  // указатель на текущий используемый блок
-};                              // ="голова"
+    void *addr;             
+    size_t size;            
+} mem_block;
 
-int get_malloc_calls();
+typedef struct mem_pool
+{
+    enum alloc_strategy strategy; 
 
-int get_free_calls();
+    void *start;                     
+    void *used;                      
 
-// инициализация пула памяти
-void mem_pool_init(struct mem_pool *pool, size_t pool_size, size_t block_size);
+    size_t num_of_available_blocks;  
+    size_t num_of_used_blocks;       
+    size_t size_of_available_space;  
+    size_t size_of_used_space;       
 
-// инициализация блока в пуле
-void mem_block_init(struct mem_pool *pool, size_t size);
+} mem_pool;
 
-// выделение памяти для данных
-void *mem_alloc(struct mem_pool *pool, size_t size);
 
-// освобождение памяти
-void mem_free(struct mem_pool *pool, void *addr);
+char *get_pool_stats(mem_pool *pool);
 
-// уничтожение пула
+// Инициализация пула памяти
+void mem_pool_init(mem_pool *pool, size_t pool_size, enum alloc_strategy strategy);
+
+// Инициализация блока в пуле
+void mem_block_init(mem_pool *pool, size_t size);
+
+// Выделение памяти для данных
+void *mem_alloc(mem_pool *pool, size_t size);
+
+// Выделение и инициализация памяти в пуле
+void *mem_calloc(mem_pool *pool, size_t num, size_t size);
+
+// Перераспределение памяти внутри пула
+void *mem_realloc(mem_pool *pool, void *addr, size_t size);
+
+// Освобождение памяти
+void mem_free(mem_pool *pool, void *addr);
+
+// Уничтожение пула
 void mem_pool_destroy(struct mem_pool *pool);
 
-#endif /* MY_ALLOC_H */
+#endif /* OTHER_MY_ALLOC_H */

@@ -84,11 +84,6 @@ void generate_names(FILE *output_file, FILE *names_file, FILE *surnames_file, in
 {
     srand(time(NULL));
 
-    if (names_file == NULL || surnames_file == NULL) {
-        fprintf(stderr, "Failed to open src/names.txt or src/surnames.txt!\n");
-        exit(1);
-    }
-
     int id = 1;
     char name[100];
     char surname[100];
@@ -133,4 +128,33 @@ void generate_names(FILE *output_file, FILE *names_file, FILE *surnames_file, in
         fprintf(output_file, "%d %s %s\n", id, name, surname);
         id++;
     }
+}
+
+// Функция для получения айди (кол-ва людей) в файле с записями
+int get_id_from_src_file(FILE *src_file)
+{
+
+    // Запоминаем положение указателя в файле
+    long last_pos = ftell(src_file);
+    // Перемещаем указатель файла в начало
+    fseek(src_file, 0, SEEK_SET);
+    char c;
+    long pos = ftell(src_file);
+    char *buf = (char *)malloc(256 * sizeof(char));
+    int max_id = -1;
+    int id = max_id;
+    while (fgets(buf, 256, src_file) != NULL && !feof(src_file))
+    {
+        buf[strcspn(buf, "\n")] = '\0';
+        char *token = strtok(buf, " ");
+        if (!is_number(token)) { // Если структура файла нарушена
+            fprintf(stderr, "Incorrect structure of source file!\n");
+            exit(1);
+        }
+        id = atoi(token);
+        if (id > max_id) max_id = id;
+    }
+    // Восстанавливаем указатель в файле
+    fseek(src_file, last_pos, SEEK_SET);
+    return max_id;
 }

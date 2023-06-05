@@ -1,14 +1,15 @@
 #ifndef MY_BTREE_H
 #define MY_BTREE_H
 
-// Лисичкин Д.А. 150502
-// бинарное дерево
-// последнее изменение: 14.05.23
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "statistic.h"
 #include "my_alloc.h"
 
 // структура для узла дерева
@@ -26,6 +27,12 @@ typedef struct Tree
     struct Node *root; // указатель на корневой узел
     struct mem_pool *pool; // указатель на пул памяти для выделения узлов
 } Tree;
+
+// Логгинг
+void log_action(const char *message);
+
+// Вывод статистики
+void show_stats();
 
 // Инициализация бинарного дерева
 Tree* tree_init(struct mem_pool *pool);

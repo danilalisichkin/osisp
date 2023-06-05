@@ -1,13 +1,14 @@
 #ifndef STANDARD_BTREE_H
 #define STANDARD_BTREE_H
 
-// Лисичкин Д.А. 150502
-// бинарное дерево СО СТАНДАРТНЫМ АЛЛОКАТОРОМ
-// последнее изменение: 14.05.23
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "statistic.h"
+
+extern statistic st_stats;
 
 // структура для узла дерева
 typedef struct standard_Node
@@ -24,9 +25,11 @@ typedef struct standard_Tree
     struct standard_Node* root;     // указатель на корневой узел
 } standard_Tree;
 
-int st_get_malloc_calls();
+// Логгинг
+void st_log_action(const char *message);
 
-int st_get_free_calls();
+// Вывод статистики
+void st_show_stats();
 
 // Инициализация бинарного дерева
 standard_Tree* st_tree_init();

@@ -1,22 +1,46 @@
 #include "standard_btree.h"
 
-static int st_ml_counter; // счетчик обращений к malloc()
-static int st_fr_counter; // счетчик обращений к free()
+statistic st_stats;
 
-int st_get_malloc_calls()
+// Логгинг
+void st_log_action(const char *message)
 {
-    return st_ml_counter;
+    if (st_stats.fl_show_stat && message != NULL) {
+        printf("%s", message);
+    }
 }
 
-int st_get_free_calls()
+// Вывод статистики
+void st_show_stats()
 {
-    return st_fr_counter;
+    static int i;
+    fprintf(st_stats_lwt, "(%d) %ld.%09ld\n",
+            i, st_stats.last_work_time.tv_sec, st_stats.last_work_time.tv_nsec);
+    fprintf(st_stats_swt, "(%d) %ld.%09ld\n",
+            i, st_stats.summary_work_time.tv_sec, st_stats.summary_work_time.tv_nsec);
+    ++i;
+    char *statistic = get_stats(&st_stats);
+    if (statistic != NULL) {
+        printf("[   MALLOC  ] : [%s]\n", statistic);
+        free(statistic);
+    }
 }
 
 // Инициализация бинарного дерева
 standard_Tree* st_tree_init()
 {
+    struct timespec before, after, diff;
+
+    st_log_action("[in st_btree] : allocating memory for tree struct...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     standard_Tree *tree = (standard_Tree*)malloc(sizeof(standard_Tree)); // выделяем память под дерево
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
+
     tree->root = NULL; // корневой узел пока не существует
     return tree;
 }
@@ -24,12 +48,31 @@ standard_Tree* st_tree_init()
 // Функция создания нового узла дерева
 standard_Node* st_create_node(int p_id, const char *p_name)
 {
+    struct timespec before, after, diff;
+
+    st_log_action("[in st_btree] : allocating memory for node struct...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     standard_Node* node = (standard_Node*)malloc(sizeof(standard_Node)); // выделяем память под узел
-    st_ml_counter++;
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
+
     node->p_id = p_id; // сохраняем айди
+
+    st_log_action("[in st_btree] : allocating memory for person's name...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     node->p_name = malloc(strlen(p_name) + 1);
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
+
     strcpy(node->p_name, p_name); // сохраняем имя+фамилию
-    st_ml_counter++;
     node->left = NULL; // левый узел пока не существует
     node->right = NULL; // правый узел пока не существует
     return node;
@@ -130,7 +173,8 @@ standard_Node* st_find_node_by_id(standard_Node *root, int p_id)
 }
 
 // Рекурсивная функция для поиска РОДИТЕЛЯ узла в дереве по его адресу
-standard_Node** st_find_parent_node(standard_Node** current, standard_Node* node) {
+standard_Node** st_find_parent_node(standard_Node** current, standard_Node* node)
+{
     if (*current == NULL || node == NULL) {
         return NULL;
     }
@@ -201,13 +245,32 @@ void st_delete_node(standard_Tree *tree, standard_Node **current, standard_Node 
         min->left = to_delete->left;
     }
 
+    struct timespec before, after, diff;
+
+    st_log_action("[in st_btree] : freeing memory for person's name...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     free(to_delete->p_name); // Очищаем память для удаляемого узла
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
+
+    st_log_action("[in st_btree] : freeing memory for node struct...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     free(to_delete);
-    st_fr_counter+=2;
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
 }
 
 // Удаление всего дерева
-void st_delete_tree(standard_Tree *tree, standard_Node **node) {
+void st_delete_tree(standard_Tree *tree, standard_Node **node)
+{
     if (*node == NULL) {
         return;
     }
@@ -215,9 +278,27 @@ void st_delete_tree(standard_Tree *tree, standard_Node **node) {
     st_delete_tree(tree, &((*node)->left));
     st_delete_tree(tree, &((*node)->right));
 
+    struct timespec before, after, diff;
+
+    st_log_action("[in st_btree] : freeing memory for person's name...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     free((*node)->p_name);
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
+
+    st_log_action("[in st_btree] : freeing memory for node struct...\n");
+    clock_gettime(CLOCK_MONOTONIC, &before);
     free(*node);
-    st_fr_counter+=2;
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    diff = get_time_diff(before, after);
+    set_last_work_time(&st_stats, diff);
+    add_to_summary_work_time(&st_stats, diff);
+    st_show_stats();
 
     *node = NULL;
 }

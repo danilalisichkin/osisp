@@ -1,11 +1,9 @@
 #ifndef PERSON_H
 #define PERSON_H
 
-// Лисичкин Д.А. 150502
-// класс персона
-// класс для иллюстрации работы проекта
-// последнее изменение: 19.04.23
+#define MAX_NAME_SIZE 25
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
