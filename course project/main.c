@@ -271,8 +271,8 @@ int main(int argc, char *argv[])
             case 's': {
                 printf("Write file’s name: ");
                 char *f_name;
-                f_name = read_string();
                 skip_stdin();
+                f_name = read_string();
                 FILE* file_result = NULL;
                 file_result = fopen(f_name, "w");
                 if (file_result == NULL) {

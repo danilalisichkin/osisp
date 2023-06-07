@@ -1,6 +1,5 @@
 #include "utilities.h"
 
-// Функция чтения строки от пользователя
 char* read_string()
 {
     char *str = NULL;
@@ -24,7 +23,6 @@ char* read_string()
     return str;
 }
 
-// Функция чтения имени от пользователя
 char* read_name()
 {
     char *name;
@@ -44,7 +42,6 @@ char* read_name()
     return name;
 }
 
-// Функция проверки сожержит ли строка только цифры
 int is_number(char* str)
 {
     int size = strlen(str);
@@ -55,14 +52,12 @@ int is_number(char* str)
     return 1;
 }
 
-// Функция для чистки stdin от лишних символов
 void skip_stdin()
 {
     char c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-// Функция чтения целового числа от пользователя в перделах от l до r
 void read_int(int *value, int l, int r)
 {
     int result;
@@ -79,7 +74,6 @@ void read_int(int *value, int l, int r)
     }
 }
 
-// Функция для генерации записей о пользователях
 void generate_names(FILE *output_file, FILE *names_file, FILE *surnames_file, int num_persons)
 {
     srand(time(NULL));
@@ -92,51 +86,41 @@ void generate_names(FILE *output_file, FILE *names_file, FILE *surnames_file, in
 
         int c;
 
-        // Перемещаемся в случайное место в names.txt
         fseek(names_file, 0, SEEK_END);
         long names_file_size = ftell(names_file);
         long names_pos = rand() % names_file_size;
         fseek(names_file, names_pos, SEEK_SET);
 
-        // Ищем начало следующего слова
         while ((c = fgetc(names_file)) != EOF && c != ' ');
 
-        // Читаем имя из names.txt
         if (fscanf(names_file, "%s", name) != 1) {
             continue;
         }
 
         if (strlen(name) == 0) continue;
 
-        // Перемещаемся в случайное место в surnames.txt
         fseek(surnames_file, 0, SEEK_END);
         long surnames_file_size = ftell(surnames_file);
         long surnames_pos = rand() % surnames_file_size;
         fseek(surnames_file, surnames_pos, SEEK_SET);
 
-        // Ищем начало следующего слова
         while ((c = fgetc(surnames_file)) != EOF && c != ' ');
 
-        // Читаем фамилию из surnames.txt
         if (fscanf(surnames_file, "%s", surname) != 1) {
             continue;
         }
 
         if (strlen(surname) == 0) continue;
 
-        // Записываем запись в выходной файл
         fprintf(output_file, "%d %s %s\n", id, name, surname);
         id++;
     }
 }
 
-// Функция для получения айди (кол-ва людей) в файле с записями
 int get_id_from_src_file(FILE *src_file)
 {
 
-    // Запоминаем положение указателя в файле
     long last_pos = ftell(src_file);
-    // Перемещаем указатель файла в начало
     fseek(src_file, 0, SEEK_SET);
     char c;
     long pos = ftell(src_file);
@@ -147,14 +131,13 @@ int get_id_from_src_file(FILE *src_file)
     {
         buf[strcspn(buf, "\n")] = '\0';
         char *token = strtok(buf, " ");
-        if (!is_number(token)) { // Если структура файла нарушена
+        if (!is_number(token)) {
             fprintf(stderr, "Incorrect structure of source file!\n");
             exit(1);
         }
         id = atoi(token);
         if (id > max_id) max_id = id;
     }
-    // Восстанавливаем указатель в файле
     fseek(src_file, last_pos, SEEK_SET);
     return max_id;
 }

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -W -Wall -Wno-unused-parameter -Wno-unused-variable -Wredundant-decls -finput-charset=UTF-8 -std=c11 -pedantic -D_GNU_SOURCE
+CFLAGS = -W -Wall -Werror -Wno-unused-parameter -Wno-unused-variable -Wredundant-decls -finput-charset=UTF-8 -std=c11 -pedantic -D_GNU_SOURCE
 LDFLAGS = -lm
 
 SRCS = main.c libs/my_alloc.c libs/my_btree.c libs/person.c libs/standard_btree.c libs/utilities.c libs/statistic.c

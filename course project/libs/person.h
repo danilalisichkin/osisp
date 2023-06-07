@@ -21,25 +21,18 @@ struct array_of_persons
     struct person *persons;
 };
 
-// Функция для создания новой структуры person
 struct person *new_person(char *name, int id);
 
-// Функция для освобождения памяти, выделенной для структуры person
 void free_person(struct person *p);
 
-// Функция для парсинга записи вида "[ID] [NAME]" в структуру person
 struct person *parse_person(char *line);
 
-// Функция для добавления записи в текстовый файл
 int add_person(FILE *file, struct person *p);
 
-// Функция для инициализации массива людей
 void init_array_of_persons(struct array_of_persons *p_array);
 
-// Функция для очистки массива людей
 void free_array_of_persons(struct array_of_persons *p_array);
 
-// Функция для добавления человека в массив людей
 void add_person_to_array(struct array_of_persons *p_array, struct person* _person);
 
 #endif /* PERSON_H */

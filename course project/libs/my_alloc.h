@@ -38,28 +38,20 @@ typedef struct mem_pool
 
 } mem_pool;
 
-
 char *get_pool_stats(mem_pool *pool);
 
-// Инициализация пула памяти
 void mem_pool_init(mem_pool *pool, size_t pool_size, enum alloc_strategy strategy);
 
-// Инициализация блока в пуле
 void mem_block_init(mem_pool *pool, size_t size);
 
-// Выделение памяти для данных
 void *mem_alloc(mem_pool *pool, size_t size);
 
-// Выделение и инициализация памяти в пуле
 void *mem_calloc(mem_pool *pool, size_t num, size_t size);
 
-// Перераспределение памяти внутри пула
 void *mem_realloc(mem_pool *pool, void *addr, size_t size);
 
-// Освобождение памяти
 void mem_free(mem_pool *pool, void *addr);
 
-// Уничтожение пула
 void mem_pool_destroy(struct mem_pool *pool);
 
 #endif /* OTHER_MY_ALLOC_H */
